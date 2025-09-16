@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Student Practical Group Calendar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: lightgray;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: red;
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 2.2rem; font-weight: 300; margin-bottom: 6px; }
+    .header p { opacity: 0.95; }
+
+    .group-selector {
+      background: #f8f9fa;
+      padding: 16px 24px;
+      border-bottom: 1px solid #dee2e6;
+      text-align: center;
+    }
+
+    .group-selector label {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-right: 12px;
+    }
+
+    .group-selector select {
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      min-width: 160px;
+    }
+
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .download-btn {
+      background: white;
+      color: #495057;
+      border: 2px solid rgba(255,0,0,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      margin-top: 10px;
+    }
+      
+    .download-btn:hover {
+      background: #BF0000;
+      color: white;
+      transform: translateY(-1px);
+    }
+      
+    .download-btn:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .nav-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .month-year { font-size: 1.25rem; font-weight: 600; color: #2c3e50; }
+
+    /* Calendar grid */
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #dee2e6;
+      margin: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .day-header {
+      background: #495057;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Fixed-size day cells (keeps each day same height) */
+    .day {
+      background: white;
+      height: 140px;         /* <-- fixed height for each day cell */
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .day:hover {
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 5;
+    }
+
+    .day-number { font-weight: 600; margin-bottom: 6px; color: #495057; }
+
+    .other-month { color: #adb5bd; background: #f8f9fa; }
+
+    .today {
+      background: #fff3cd !important;
+      border: 2px solid #ffc107;
+    }
+
+    .session {
+      display: block;
+      color: white;
+      padding: 4px 6px;
+      margin: 2px 0;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+
+    /* Format + Module-based classes - used by JS: e.g. "lecture bioXXXX" */
+    /* BIO1103 */
+    .lecture.bio1305 { background-color: #4facfe; color: #111}
+    .lab.bio1305     { background-color: #fa709a; color: #111}
+    .event.bio1305   { background-color: yellow; color: #111}
+    .assessment.bio1305 { background-color: red; color: #111;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
+
+    /* modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .modal.show { display: block; }
+    .modal-content {
+      background-color: white;
+      margin: 8% auto;
+      padding: 22px;
+      border-radius: 12px;
+      width: 92%;
+      max-width: 640px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.24s ease;
+    }
+    .modal.show .modal-content { transform: translateY(0); opacity: 1; }
+    .close { float: right; font-size: 26px; font-weight: 700; cursor: pointer; color: #777; }
+    .modal h2 { color: #2c3e50; margin-bottom: 10px; }
+
+    .modal-info { display: grid; gap: 10px; }
+    .info-row { display:flex; gap:12px; align-items:center; padding:8px; background:#f8f9fa; border-radius:8px; }
+    .info-label { min-width: 110px; font-weight:600; color:#495057; }
+    .staff-badge { display:inline-block; background:#007bff; color:white; padding:4px 10px; border-radius:12px; font-weight:600; }
+    .module-badge { display:inline-block; padding:4px 10px; border-radius:12px; font-weight:600; color:white; }
+
+    .module-bio1305 { background: #4facfe; }  /* blue */
+
+    /* Legend */
+    .legend { display:flex; justify-content:center; gap:18px; padding:18px; background:#f8f9fa; flex-wrap:wrap; border-top:1px solid #eee; }
+    .legend-item { display:flex; gap:8px; align-items:center; font-weight:600; color:#333; }
+    .legend-color { width:24px; height:16px; border-radius:4px; border:1px solid rgba(0,0,0,0.05); }
+
+    /* legend colors matching classes above */
+    .legend-color.bio1305-lecture        { background:#4facfe; }
+    .legend-color.bio1305-lab            { background:#fa709a; }
+    .legend-color.bio1305-event          { background:yellow;  }
+    .legend-color.bio1305-assessment     { background:red;     }
+
+    .no-sessions { text-align:center; padding:40px; color:#6c757d; font-style:italic; }
+
+    @media (max-width: 900px) {
+      .day { height: 110px; }
+      .group-selector select { width: 100%; max-width: 240px; }
+    }
+
+    @media (max-width: 560px) {
+      .header h1 { font-size: 1.4rem; }
+      .day { height: 100px; padding:6px; }
+      .session { font-size:10px; padding:3px 5px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!--<div class="header">
+      <h1>BIO1305 Course Calendar</h1>
+      <p>Select your practical group to view your timetable</p>
+    </div>-->
+    
+    <div class="header">
+      <h1>BIO1305 Course Calendar</h1>
+      <p>Select your practical group to view & download your timetable</p>
+        <button class="download-btn" onclick="downloadICS()" id="downloadBtn" disabled>
+        Download Calendar
+        </button>
+    </div>
+
+    <div class="group-selector">
+      <label for="groupSelect">Select Your Practical Group:</label>
+      <select id="groupSelect" onchange="updateCalendar()">
+        <option value="">Choose a group...</option>
+        <option value="Group 1">Group 1</option>
+        <option value="Group 2">Group 2</option>
+      </select>
+    </div>
+
+    <div class="calendar-nav">
+      <button class="nav-btn" onclick="previousMonth()">&#8592; Previous</button>
+      <div class="month-year" id="monthYear"></div>
+      <button class="nav-btn" onclick="nextMonth()">Next &#8594;</button>
+    </div>
+
+    <!-- LEGEND: only lectures & labs (class tests & feedback removed from legend) -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color bio1305-lecture"></div>
+        <span>BIO1305 Lectures</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color bio1305-lab"></div>
+        <span>BIO305 Labs</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color bio1305-assessment"></div>
+        <span>BIO1305 Assessments</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color bio1305-event"></div>
+        <span>BIO1305 Other Events</span>
+      </div>
+    </div>
+
+    <div class="calendar" id="calendar"></div>
+
+    <div class="no-sessions" id="noSessions" style="display: none;">
+      Please select a practical group to view & download your timetable.
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="sessionModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <span class="close" aria-label="Close">&times;</span>
+      <h2>Session Details</h2>
+      <div class="modal-info">
+        <div class="info-row"><div class="info-label">Date & Time:</div><div class="info-value" id="modalDateTime"></div></div>
+        <div class="info-row"><div class="info-label">Session:</div><div class="info-value" id="modalLecture"></div></div>
+        <div class="info-row"><div class="info-label">Location:</div><div class="info-value" id="modalLocation"></div></div>
+        <div class="info-row"><div class="info-label">Staff:</div><div class="info-value"><span id="modalStaff" class="staff-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Module:</div><div class="info-value"><span id="modalModule" class="module-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Format:</div><div class="info-value" id="modalFormat"></div></div>
+        <div class="info-row"><div class="info-label">Week:</div><div class="info-value" id="modalWeek"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- your original sessionData preserved exactly (unchanged) ---
+    const sessionData = [
+      // Week 1
+      {week: 1, date: '2025-09-15', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Course Introduction', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 1, date: '2025-09-16', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Laboratory Induction', staff: 'LS', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 1, date: '2025-09-17', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'History of Life: The origins of our planet and life on it', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 1, date: '2025-09-18', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Laboratory Induction', staff: 'LS', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 1, date: '2025-09-19', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Evolution: Descent with modification', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+      // Week 2
+      {week: 2, date: '2025-09-22', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Speciation: On the Origin of Species', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 2, date: '2025-09-23', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Group Project Session 1', staff: 'CM/LS', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 2, date: '2025-09-24', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Phylogeny and the Tree of Life', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 2, date: '2025-09-25', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Group Project Session 1', staff: 'CM/LS', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 2, date: '2025-09-26', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Protist Diversity I', staff: 'SH', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+      // Week 3
+      {week: 3, date: '2025-09-29', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Protist Diversity II', staff: 'SH', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 3, date: '2025-09-30', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 1 - Protists', staff: 'SH', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 3, date: '2025-10-01', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Plant Diversity I: Greening of the Earth', staff: 'MTS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 3, date: '2025-10-02', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 1 - Protists', staff: 'SH', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 3, date: '2025-10-03', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Plant Diversity II: Seed Plants', staff: 'MTS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+      // Week 4
+      {week: 4, date: '2025-10-06', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Plant Reproduction', staff: 'MTS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 4, date: '2025-10-07', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 2 - Plants', staff: 'MTS', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 4, date: '2025-10-08', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Fungal Diversity', staff: 'MTS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 4, date: '2025-10-09', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 2 - Plants', staff: 'MTS', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 3, date: '2025-10-10', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Introduction to Metazoans', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+      // Week 5
+     {week: 5, date: '2025-10-13', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Sponges', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 5, date: '2025-10-14', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Group Project Session 2', staff: 'CM/LS', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 5, date: '2025-10-15', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Cnidarians & Ctenophores', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 5, date: '2025-10-16', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'Group Project Session 2', staff: 'MTS', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 5, date: '2025-10-17', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Playtyhelminthes', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+      // Week 6
+      {week: 6, date: '2025-10-20', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Molluscs', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 6, date: '2025-10-21', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 3 - Molluscs', staff: 'AM', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 6, date: '2025-10-22', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Nematodes', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 6, date: '2025-10-23', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 3 - Molluscs', staff: 'MTS', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 6, date: '2025-10-24', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Echinoderms', staff: 'AM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+       //week 7 - READING WEEK
+       {week: 7, date: '2025-10-31', time: '12:00 - 13:00', location: 'Online', day: 'F', lecture: 'CLASS TEST 1', staff: '', format: 'Assessment', group: 'All', module: 'BIO1305'},
+            
+            //Week 8
+      {week: 8, date: '2025-11-03', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Annelids', staff: 'NJM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 8, date: '2025-11-04', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 4 - Annelids', staff: 'NJM', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 8, date: '2025-11-05', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Arthropods I: Arachnids', staff: 'NJM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 8, date: '2025-11-06', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 4 - Annelids', staff: 'NJM', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 8, date: '2025-11-07', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Arthropods II: Crustaceans', staff: 'NJM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      
+            //week 9
+            {week: 9, date: '2025-11-10', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Arthropods III: Insects', staff: 'NJM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 9, date: '2025-11-11', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 5 - Arthropods', staff: 'NJM', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 9, date: '2025-11-12', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Vertebrate Diversity', staff: 'NJM', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 9, date: '2025-11-13', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 5 - Arthropods', staff: 'NJM', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 9, date: '2025-11-14', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Fish I: Sharks, rays and skates', staff: 'PC', format: 'Lecture', group: 'All', module: 'BIO1305'},
+            
+            //week 10
+            {week: 10, date: '2025-11-17', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Fish II: Bony Fish', staff: 'PC', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 10, date: '2025-11-19', time: '14:00 - 16:00', location: 'South Dining Hall', day: 'W', lecture: 'Poster Symposium', staff: 'LS', format: 'Event', group: 'All', module: 'BIO1305'},
+      {week: 10, date: '2025-11-21', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Avian Biology and Diversity', staff: 'DPD', format: 'Lecture', group: 'All', module: 'BIO1305'},
+            
+            //Week 11
+            {week: 11, date: '2025-11-24', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'The emergence of terrestrial vertebrates', staff: 'DPD', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 11, date: '2025-11-25', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 6 - Fish', staff: 'PC', format: 'Lab', group: 'Group 1', module: 'BIO1305'},
+      {week: 11, date: '2025-11-26', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Amphibian Diversity and Biology', staff: 'DPD', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 11, date: '2025-11-27', time: '14:00 - 17:00', location: 'SBS Teaching Lab', day: 'T', lecture: 'PRACTICAL 6 - Fish', staff: 'PC', format: 'Lab', group: 'Group 2', module: 'BIO1305'},
+      {week: 11, date: '2025-11-28', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Reptile Diversity and Biology', staff: 'GA', format: 'Lecture', group: 'All', module: 'BIO1305'},
+            
+            //Week 12
+            {week: 12, date: '2025-12-01', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Mammal Diversity I', staff: 'GA', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 12, date: '2025-12-03', time: '12:00 - 13:00', location: 'Elmwood Hall', day: 'W', lecture: 'Mammal Diversity II', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 12, date: '2025-12-05', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'Human Evolution', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+            
+            //Week 13
+            {week: 13, date: '2025-12-08', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'M', lecture: 'Module Review, Feedback & Revision Session', staff: 'LS', format: 'Lecture', group: 'All', module: 'BIO1305'},
+      {week: 12, date: '2025-12-12', time: '12:00 - 13:00', location: 'David Keir Building/0G/115', day: 'F', lecture: 'CLASS TEST 2', staff: 'LS', format: 'Assessment', group: 'All', module: 'BIO1305'},
+            ];
+
+    // --- calendar state & helpers ---
+    let currentDate = new Date(2025, 8, 1); // September 2025 (as you had)
+    let selectedGroup = '';
+
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+    function updateCalendar() {
+      selectedGroup = document.getElementById('groupSelect').value;
+      const downloadBtn = document.getElementById('downloadBtn');
+      
+      // Enable/disable download button based on group selection
+      if (selectedGroup) {
+        downloadBtn.disabled = false;
+      } else {
+        downloadBtn.disabled = true;
+      }
+  
+      renderCalendar();
+    }
+
+function downloadICS() {
+
+if (!selectedGroup) return; // Safety check
+
+  let icsContent = 
+    "BEGIN:VCALENDAR\n" +
+    "VERSION:2.0\n" +
+    "CALSCALE:GREGORIAN\n" +
+    "METHOD:PUBLISH\n" +
+    "PRODID:-//Your App//Calendar//EN\n";
+
+    // Filter sessions for selected group only
+  const filteredSessions = sessionData.filter(event => 
+    event.group === 'All' || event.group === selectedGroup
+  );
+
+  filteredSessions.forEach(event => {
+    // Check if time range exists
+    const hasRange = event.time.includes(" - ");
+    let start, end;
+
+    if (hasRange) {
+      // e.g. "09:00 - 12:00"
+      start = new Date(event.date + "T" + event.time.split(" - ")[0] + ":00");
+      end   = new Date(event.date + "T" + event.time.split(" - ")[1] + ":00");
+    } else {
+      // e.g. "16:00" (deadline) â instant event
+      start = new Date(event.date + "T" + event.time + ":00");
+      end = null;
+    }
+
+    function formatDate(d) {
+      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    }
+
+    icsContent +=
+      "BEGIN:VEVENT\n" +
+      `UID:${event.date}-${event.lecture.replace(/\s+/g, "")}@${event.module}\n` +
+      `DTSTAMP:${formatDate(new Date())}\n` +
+      `DTSTART:${formatDate(start)}\n` +
+      (end ? `DTEND:${formatDate(end)}\n` : "") +   // only add DTEND if range
+      `SUMMARY:${event.lecture}\n` +
+      `DESCRIPTION:Week ${event.week} | ${event.format} | Staff: ${event.staff}\n` +
+      (event.location ? `LOCATION:${event.location}\n` : "") +
+      "END:VEVENT\n";
+  });
+
+  icsContent += "END:VCALENDAR";
+
+  // Create downloadable blob
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "BIO1305-calendar.ics";
+  link.click();
+}
+
+    function renderCalendar() {
+      const calendar = document.getElementById('calendar');
+      const monthYear = document.getElementById('monthYear');
+      const noSessions = document.getElementById('noSessions');
+
+      if (!selectedGroup) {
+        calendar.style.display = 'none';
+        noSessions.style.display = 'block';
+        monthYear.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        return;
+      }
+
+      calendar.style.display = 'grid';
+      noSessions.style.display = 'none';
+
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      monthYear.textContent = `${monthNames[month]} ${year}`;
+      
+      // Disable/enable navigation buttons - Sept to Dec only
+  document.querySelector('.nav-btn:first-child').disabled =
+    (year === 2025 && month === 8);  // September
+  document.querySelector('.nav-btn:last-child').disabled =
+    (year === 2025 && month === 11); // December
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const firstDayWeek = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+
+      calendar.innerHTML = '';
+
+      // Add day headers (Sun-Sat)
+      dayNames.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+        dayHeader.textContent = day;
+        calendar.appendChild(dayHeader);
+      });
+
+      // Add previous month's tail days
+      for (let i = 0; i < firstDayWeek; i++) {
+        const prevMonth = new Date(year, month, 0);
+        const dayNum = prevMonth.getDate() - (firstDayWeek - 1 - i);
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'day other-month';
+        emptyDay.innerHTML = `<div class="day-number">${dayNum}</div>`;
+        calendar.appendChild(emptyDay);
+      }
+
+      // Add days of current month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'day';
+
+        // highlight today
+        const today = new Date();
+        if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+          dayElement.classList.add('today');
+        }
+
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
+
+        // format current date string
+        const currentDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        // find sessions for this date that apply to the selected group
+        const daySessions = sessionData.filter(session =>
+          session.date === currentDateString &&
+          (session.group === 'All' || session.group === selectedGroup)
+        );
+
+        // append sessions (apply classes: format and module)
+        daySessions.forEach(session => {
+          const sessionElement = document.createElement('div');
+          // ensure base class
+          sessionElement.className = 'session';
+
+          // add a 'lecture'/'lab'/'feedback' class based on format (lowercase)
+          const formatClass = session.format ? session.format.toLowerCase() : '';
+          if (formatClass) sessionElement.classList.add(formatClass);
+
+          // add module class like 'bio1103' or 'bio1314'
+          if (session.module) {
+            sessionElement.classList.add(session.module.toLowerCase());
+          }
+
+          // Use innerHTML to preserve simple markup in some titles (e.g. <strong>)
+          sessionElement.innerHTML = `${session.time} ${session.lecture}`;
+
+          // click opens modal with details
+          sessionElement.addEventListener('click', () => showSessionModal(session));
+          dayElement.appendChild(sessionElement);
+        });
+
+        calendar.appendChild(dayElement);
+      }
+
+      // Add next month's leading days to fill final row
+      const totalCells = Math.ceil((daysInMonth + firstDayWeek) / 7) * 7;
+      const remainingCells = totalCells - (daysInMonth + firstDayWeek);
+      for (let d = 1; d <= remainingCells; d++) {
+        const nextMonthDay = document.createElement('div');
+        nextMonthDay.className = 'day other-month';
+        nextMonthDay.innerHTML = `<div class="day-number">${d}</div>`;
+        calendar.appendChild(nextMonthDay);
+      }
+    }
+
+    // Modal functions
+    function showSessionModal(session) {
+      const modal = document.getElementById('sessionModal');
+      const modalDateTime = document.getElementById('modalDateTime');
+      const modalLecture = document.getElementById('modalLecture');
+      const modalLocation = document.getElementById('modalLocation');
+      const modalStaff = document.getElementById('modalStaff');
+      const modalModule = document.getElementById('modalModule');
+      const modalFormat = document.getElementById('modalFormat');
+      const modalWeek = document.getElementById('modalWeek');
+
+      const sessionDate = new Date(session.date);
+      const formattedDate = sessionDate.toLocaleDateString('en-GB', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+      modalDateTime.textContent = `${formattedDate}, ${session.time}`;
+      // keep HTML rendering in the modal lecture (so <strong> etc remain)
+      document.getElementById('modalLecture').innerHTML = session.lecture;
+      modalLocation.textContent = session.location;
+      modalStaff.textContent = session.staff;
+
+      // module badge: set text and module-specific class
+      modalModule.textContent = session.module;
+      modalModule.className = 'module-badge'; // reset
+      if (session.module === 'BIO1305') modalModule.classList.add('module-bio1305');
+
+      modalFormat.textContent = session.format;
+      modalWeek.textContent = session.week ?? '';
+
+      modal.style.display = 'block';
+      setTimeout(() => modal.classList.add('show'), 10);
+    }
+
+    // previous / next navigation - limit to Sept/Dec
+    function previousMonth() {
+      if (currentDate.getFullYear() === 2025 && currentDate.getMonth() === 8) {
+    return; // already at September 2025 â do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
+}
+
+    function nextMonth() {
+  if (currentDate.getFullYear() === 2025 && currentDate.getMonth() === 11) {
+    return; // already at December 2025 â do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
+}
+
+    // Modal close handlers
+    const modal = document.getElementById('sessionModal');
+    const closeBtn = document.querySelector('.close');
+    closeBtn.addEventListener('click', closeModal);
+    window.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+    function closeModal() {
+      modal.classList.remove('show');
+      setTimeout(() => { modal.style.display = 'none'; }, 220);
+    }
+
+    // Initialize selectedGroup as blank (forces user to choose)
+    renderCalendar();
+
+    // expose updateCalendar globally because select uses onchange="updateCalendar()"
+    window.updateCalendar = updateCalendar;
+    window.previousMonth = previousMonth;
+    window.nextMonth = nextMonth;
+  </script>
+</body>
+</html>
