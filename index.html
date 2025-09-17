@@ -154,6 +154,21 @@
       border: 2px solid #ffc107;
     }
 
+    .week-7 {
+      background-color: #e8f5e8 !important; /* pale green */
+    }
+
+    .self-directed-label {
+      background-color: #90ee90;
+      color: #2d5016;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      margin: 2px 0;
+    }
+    
     .session {
       display: block;
       color: white;
@@ -541,6 +556,21 @@ if (!selectedGroup) return; // Safety check
         // format current date string
         const currentDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+        // Check if this date falls in week 7 (Oct 27-31, 2025)
+        const week7Start = new Date(2025, 9, 27); // Oct 27
+        const week7End = new Date(2025, 9, 31);   // Oct 31
+        const currentDayDate = new Date(year, month, day);
+
+        if (currentDayDate >= week7Start && currentDayDate <= week7End) {
+        dayElement.classList.add('week-7');
+  
+        // Add "Self directed learning" label
+        const selfDirectedLabel = document.createElement('div');
+        selfDirectedLabel.className = 'self-directed-label';
+        selfDirectedLabel.textContent = 'SELF-DIRECTED LEARNING';
+        dayElement.appendChild(selfDirectedLabel);
+        }
+        
         // find sessions for this date that apply to the selected group
         const daySessions = sessionData.filter(session =>
           session.date === currentDateString &&
